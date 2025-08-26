@@ -1,0 +1,7 @@
+"deploy": {
+  "builder": "ngx-deploy-s3:deploy",
+  "options": {
+    "bucket": "your-s3-bucket-name",
+    "region": "your-aws-region"
+  }
+}

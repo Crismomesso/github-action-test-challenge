@@ -1,0 +1,68 @@
+name: angular-ci
+
+on:
+  push:
+    paths:
+      - "**/*.ts"
+      - "**/*.html"
+      - "**/*.scss"
+      - "package*.json"
+      - "angular.json"
+      - ".github/workflows/angular.yml"
+  pull_request:
+
+env:
+  NODE_VERSION: "20"
+  CI: "true"
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Test (Karma Headless)
+        run: npx ng test --watch=false --browsers=ChromeHeadless --code-coverage
+
+      - name: Build (production)
+        run: npx ng build --configuration production
+
+  deploy-s3:
+    if: github.ref == 'refs/heads/main'
+    needs: test-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy to S3 using Angular CLI
+        run: npx ng deploy --configuration production
